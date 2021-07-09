@@ -9,9 +9,10 @@ import java.util.Hashtable;
 public class Lexer {
 
     public static int line = 1;
+    public boolean EOF = false;
     private char ch = ' ';
     private FileReader fileReader;
-    private Hashtable<String, Token> words = new Hashtable();
+    private Hashtable<String, Token> words = new Hashtable<String, Token>();
 
     public Lexer(FileReader fileReader) throws Exception {
         this.fileReader = fileReader;
@@ -28,18 +29,6 @@ public class Lexer {
         reserve(new Word("while", Tag.WHILE));
         reserve(new Word("read", Tag.READ));
         reserve(new Word("write", Tag.WRITE));
-
-        Token token = scan();
-        // while (!token.toString().equals(Word.DONE.toString())) {
-        // System.out.println(token.toString());
-        // token = scan();
-        // }
-        // conferir pq nao esta parando no EOF
-        int i = 0;
-        while (i < 82) {
-            token = scan();
-            i++;
-        }
     }
 
     public Token scan() throws IOException {
@@ -103,31 +92,28 @@ public class Lexer {
                 readChar();
                 return Word.MULT;
 
-            // pensar bem comentarios
+            // lembrar de considerar EOF
             case '/':
-                sb = new StringBuffer();
-
-                if (readAhead('/')) {
+                readChar();
+                if (this.ch == '/') {
                     do {
-                        sb.append(this.ch);
                         readChar();
                     } while (this.ch != '\n');
 
-                    return new Word(Character.toString(this.ch), Tag.NONE);
+                    return null;
                 }
 
-                if (readAhead('*')) {
-                    do {
-                        sb.append(this.ch);
+                if (this.ch == '*') {
+                    while (true) {
                         readChar();
-                    } while (this.ch != '*');
 
-                    if (readAhead('/')) {
-                        sb.append(this.ch);
-                        readChar();
+                        if (this.ch == '*') {
+                            if (readAhead('/')) {
+                                return null;
+                            }
+                        }
+
                     }
-
-                    return new Word(Character.toString(this.ch), Tag.NONE);
                 }
 
                 return Word.DIVIDE;
@@ -188,75 +174,61 @@ public class Lexer {
 
         // numeros
         if (Character.isDigit(this.ch)) {
-            Num t;
-            int type = Tag.INT;
-
             switch (this.ch) {
                 case '0':
-                    t = (Num) words.get("0");
-
-                    if (t != null)
-                        return t; // palavra já existe na HashTable
-
-                    t = new Num("0", Tag.INT);
-
-                    words.put("0", t);
-                    return t;
+                    return new Int(0);
 
                 default:
-                    StringBuffer sb = new StringBuffer();
+                    double value = 0;
+                    sb = new StringBuffer();
                     do {
-                        sb.append(this.ch);
-
-                        // logica de verificacao do ponto cagada
-                        if (readAhead('.')) {
-                            System.out.println(this.ch);
-                            sb.append(this.ch);
-                            readChar();
-
-                            if (!Character.isDigit(this.ch))
-                                throw new Error();
-
-                            type = Tag.FLOAT;
-                        }
+                        value = 10 * value + Character.digit(this.ch, 10);
+                        readChar();
                     } while (Character.isDigit(this.ch));
 
-                    String s = sb.toString();
-                    t = (Num) words.get(s);
+                    if (this.ch == '.') {
+                        readChar();
 
-                    if (t != null)
-                        return t; // palavra já existe na HashTable
+                        if (!Character.isDigit(this.ch))
+                            throw new Error("Erro léxico na linha " + Lexer.line);
 
-                    t = new Num(s, type);
+                        int iter = 1;
+                        do {
+                            value = value + Math.pow(0.1, iter) * Character.digit(this.ch, 10);
+                            readChar();
+                            iter++;
+                        } while (Character.isDigit(this.ch));
 
-                    words.put(s, t);
-                    return t;
+                        return new FloatValue((float) value);
+                    }
+
+                    return new Int((int) value);
             }
         }
 
         // Identificadores
         if (Character.isLetter(this.ch)) {
-            StringBuffer sb = new StringBuffer();
+            sb = new StringBuffer();
             do {
                 sb.append(this.ch);
                 readChar();
             } while (Character.isLetterOrDigit(this.ch) || this.ch == '_');
 
-            String s = sb.toString();
-            Word w = (Word) words.get(s);
+            String id = sb.toString();
+            Word w = (Word) words.get(id);
+
             if (w != null)
                 return w; // palavra já existe na HashTable
-            w = new Word(s, Tag.ID);
-            words.put(s, w);
+
+            w = new Word(id, Tag.ID);
+
+            words.put(id, w);
             return w;
         }
 
-        if (this.ch == -1) {
-            return Word.DONE;
-        }
-
-        readChar();
-        return new Word(Character.toString(this.ch), Tag.NONE);
+        Token t = new Token(this.ch);
+        this.ch = ' ';
+        return t;
     }
 
     private void reserve(Word t) {
@@ -265,6 +237,10 @@ public class Lexer {
 
     private void readChar() throws IOException {
         int c = fileReader.read();
+
+        if (c == -1) {
+            EOF = true;
+        }
 
         this.ch = (char) c;
     }
@@ -277,5 +253,9 @@ public class Lexer {
 
         this.ch = ' ';
         return true;
+    }
+
+    public Hashtable<String, Token> getWords() {
+        return words;
     }
 }
