@@ -10,7 +10,7 @@ public class Lexer {
     public static int line = 1;
     private char ch = ' ';
     private FileReader file;
-    private Hashtable<String, Word> words = new Hashtable<String, Word>();
+    private Hashtable<String, Token> words = new Hashtable<String, Token>();
 
     public Lexer(String fileName) throws Exception {
         try {
@@ -22,15 +22,16 @@ public class Lexer {
         reserveAllDisneyReservedTokens();
 
         Token token = scan();
-        while (!token.equals(Word.DONE)) {
-            token = scan();
-        }
-        // conferir pq nao esta parando no EOF
-        // int i = 0;
-        // while (i < 85) {
+        // while (!token.toString().equals(Word.DONE.toString())) {
+        // System.out.println(token.toString());
         // token = scan();
-        // i++;
         // }
+        // conferir pq nao esta parando no EOF
+        int i = 0;
+        while (i < 82) {
+            token = scan();
+            i++;
+        }
     }
 
     public Token scan() throws IOException {
@@ -135,19 +136,78 @@ public class Lexer {
                 readch();
                 return Word.DOT;
 
+            // strings/literais
             case '"':
+                StringBuffer sb = new StringBuffer();
+                do {
+                    if (this.ch != '\n')
+                        sb.append(this.ch);
+
+                    readch();
+                } while (this.ch != '"');
+
+                sb.append(this.ch);
                 readch();
-                return Word.QUOTE;
+
+                String lexema = sb.toString();
+
+                Token t = words.get(lexema);
+
+                if (t != null)
+                    return t; // palavra já existe na HashTable
+
+                t = new Word(lexema, Tag.LITERAL);
+                words.put(lexema, t);
+
+                return t;
         }
 
+        // numeros
         if (Character.isDigit(this.ch)) {
-            int value = 0;
+            Num t;
+            int type = Tag.INT;
 
-            do {
-                value = 10 * value + Character.digit(this.ch, 10);
-                readch();
-            } while (Character.isDigit(this.ch));
-            return new Num(value);
+            switch (this.ch) {
+                case '0':
+                    t = (Num) words.get("0");
+
+                    if (t != null)
+                        return t; // palavra já existe na HashTable
+
+                    t = new Num("0", Tag.INT);
+
+                    words.put("0", t);
+                    return t;
+
+                default:
+                    StringBuffer sb = new StringBuffer();
+                    do {
+                        sb.append(this.ch);
+
+                        // logica de verificacao do ponto cagada
+                        if (readch('.')) {
+                            System.out.println(this.ch);
+                            sb.append(this.ch);
+                            readch();
+
+                            if (!Character.isDigit(this.ch))
+                                throw new Error();
+
+                            type = Tag.FLOAT;
+                        }
+                    } while (Character.isDigit(this.ch));
+
+                    String s = sb.toString();
+                    t = (Num) words.get(s);
+
+                    if (t != null)
+                        return t; // palavra já existe na HashTable
+
+                    t = new Num(s, type);
+
+                    words.put(s, t);
+                    return t;
+            }
         }
 
         // Identificadores
@@ -156,7 +216,7 @@ public class Lexer {
             do {
                 sb.append(this.ch);
                 readch();
-            } while (Character.isLetterOrDigit(this.ch));
+            } while (Character.isLetterOrDigit(this.ch) || this.ch == '_');
 
             String s = sb.toString();
             Word w = (Word) words.get(s);
@@ -180,23 +240,45 @@ public class Lexer {
     }
 
     private void reserveAllDisneyReservedTokens() {
-        reserve(new Word("class", Tag.CLASS));
-        reserve(new Word("do", Tag.DO));
-        reserve(new Word("else", Tag.ELSE));
-        reserve(new Word("float", Tag.FLOAT));
-        reserve(new Word("if", Tag.IF));
-        reserve(new Word("init", Tag.INIT));
-        reserve(new Word("int", Tag.INT));
-        reserve(new Word("read", Tag.READ));
-        reserve(new Word("stop", Tag.STOP));
-        reserve(new Word("string", Tag.STRING));
-        reserve(new Word("while", Tag.WHILE));
-        reserve(new Word("write", Tag.WRITE));
+        reserve(Word.CLASS);
+        reserve(Word.INT);
+        reserve(Word.STRING);
+        reserve(Word.FLOAT);
+        reserve(Word.INIT);
+        reserve(Word.STOP);
+        reserve(Word.IF);
+        reserve(Word.ELSE);
+        reserve(Word.DO);
+        reserve(Word.WHILE);
+        reserve(Word.READ);
+        reserve(Word.WRITE);
+        reserve(Word.NOT);
+        reserve(Word.GREATER_THAN);
+        reserve(Word.GREATER_EQUAL);
+        reserve(Word.LESS_THAN);
+        reserve(Word.LESS_EQUAL);
+        reserve(Word.DIF);
+        reserve(Word.EQUALS);
+        reserve(Word.PLUS);
+        reserve(Word.SUBTRACT);
+        reserve(Word.OR);
+        reserve(Word.MULT);
+        reserve(Word.DIVIDE);
+        reserve(Word.AND);
+        reserve(Word.ASSIGN);
+        reserve(Word.SEMICOLON);
+        reserve(Word.COMMA);
+        reserve(Word.LEFT_PAREN);
+        reserve(Word.RIGHT_PAREN);
+        reserve(Word.BRACKET_LEFT);
+        reserve(Word.BRACKET_RIGHT);
+        reserve(Word.DOT);
+        reserve(Word.DONE);
     }
 
     private void readch() throws IOException {
-        this.ch = (char) file.read();
-        System.out.println(this.ch);
+        int f = file.read();
+        this.ch = (char) f;
     }
 
     private boolean readch(char c) throws IOException {

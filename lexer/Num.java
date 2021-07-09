@@ -1,13 +1,14 @@
 package lexer;
 
 public class Num extends Token {
-     public final int value;
-    public Num(int value){
-        super(value);
+    public final String value;
+
+    public Num(String value, int tag) {
+        super(tag);
         this.value = value;
     }
 
-    public String toString(){
+    public String toString() {
         return "" + value;
     }
 
