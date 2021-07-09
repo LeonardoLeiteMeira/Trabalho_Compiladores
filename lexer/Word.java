@@ -1,20 +1,8 @@
 package lexer;
 
 public class Word extends Token {
-    private String lexeme;
+    public final String lexeme;
 
-    public static final Word CLASS = new Word("class", Tag.CLASS);
-    public static final Word INT = new Word("int", Tag.INT);
-    public static final Word STRING = new Word("string", Tag.STRING);
-    public static final Word FLOAT = new Word("float", Tag.FLOAT);
-    public static final Word INIT = new Word("init", Tag.INIT);
-    public static final Word STOP = new Word("stop", Tag.STOP);
-    public static final Word IF = new Word("if", Tag.IF);
-    public static final Word ELSE = new Word("else", Tag.ELSE);
-    public static final Word DO = new Word("do", Tag.DO);
-    public static final Word WHILE = new Word("while", Tag.WHILE);
-    public static final Word READ = new Word("read", Tag.READ);
-    public static final Word WRITE = new Word("write", Tag.WRITE);
     public static final Word NOT = new Word("!", Tag.NOT);
     public static final Word GREATER_THAN = new Word(">", Tag.GREATER_THAN);
     public static final Word GREATER_EQUAL = new Word(">=", Tag.GREATER_EQUAL);
@@ -41,9 +29,5 @@ public class Word extends Token {
     public Word(String lexeme, int tag) {
         super(tag);
         this.lexeme = lexeme;
-    }
-
-    public String getLexeme() {
-        return lexeme;
     }
 }

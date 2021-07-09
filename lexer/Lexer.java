@@ -1,5 +1,6 @@
 package lexer;
 
+import java.io.File;
 import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
@@ -9,17 +10,24 @@ public class Lexer {
 
     public static int line = 1;
     private char ch = ' ';
-    private FileReader file;
-    private Hashtable<String, Token> words = new Hashtable<String, Token>();
+    private FileReader fileReader;
+    private Hashtable<String, Token> words = new Hashtable();
 
-    public Lexer(String fileName) throws Exception {
-        try {
-            file = new FileReader(fileName);
-        } catch (FileNotFoundException e) {
-            System.out.println("Arquivo não encontrado");
-            throw e;
-        }
-        reserveAllDisneyReservedTokens();
+    public Lexer(FileReader fileReader) throws Exception {
+        this.fileReader = fileReader;
+
+        reserve(new Word("class", Tag.CLASS));
+        reserve(new Word("int", Tag.INT));
+        reserve(new Word("string", Tag.STRING));
+        reserve(new Word("float", Tag.FLOAT));
+        reserve(new Word("init", Tag.INIT));
+        reserve(new Word("stop", Tag.STOP));
+        reserve(new Word("if", Tag.IF));
+        reserve(new Word("else", Tag.ELSE));
+        reserve(new Word("do", Tag.DO));
+        reserve(new Word("while", Tag.WHILE));
+        reserve(new Word("read", Tag.READ));
+        reserve(new Word("write", Tag.WRITE));
 
         Token token = scan();
         // while (!token.toString().equals(Word.DONE.toString())) {
@@ -36,7 +44,9 @@ public class Lexer {
 
     public Token scan() throws IOException {
 
-        for (;; readch()) {
+        StringBuffer sb;
+
+        for (;; readChar()) {
             if (this.ch == ' ' || this.ch == '\t' || this.ch == '\r' || this.ch == '\b')
                 continue;
             else if (this.ch == '\n')
@@ -47,119 +57,133 @@ public class Lexer {
 
         switch (this.ch) {
             case '!':
-                if (readch('=')) {
-                    readch();
+                if (readAhead('=')) {
                     return Word.DIF;
                 }
-                readch();
+
                 return Word.NOT;
-            case '+':
-                readch();
-                return Word.PLUS;
 
             case '>':
-                if (readch('=')) {
-                    readch();
+                if (readAhead('=')) {
                     return Word.GREATER_EQUAL;
                 }
 
-                readch();
                 return Word.GREATER_THAN;
 
             case '<':
-                if (readch('=')) {
-                    readch();
+                if (readAhead('=')) {
                     return Word.LESS_EQUAL;
                 }
 
-                readch();
                 return Word.LESS_THAN;
 
+            case '=':
+                if (readAhead('=')) {
+                    return Word.EQUALS;
+                }
+
+                return Word.ASSIGN;
+
+            case '+':
+                readChar();
+                return Word.PLUS;
+
             case '-':
-                readch();
+                readChar();
                 return Word.SUBTRACT;
 
             case '|':
-                if (readch('|')) {
-                    readch();
+                if (readAhead('|')) {
                     return Word.OR;
                 }
 
-            case '/':
-                readch();
-                return Word.DIVIDE;
+                throw new Error("Erro léxico na linha " + Lexer.line);
 
             case '*':
-                readch();
+                readChar();
                 return Word.MULT;
 
+            // pensar bem comentarios
+            case '/':
+                sb = new StringBuffer();
+
+                if (readAhead('/')) {
+                    do {
+                        sb.append(this.ch);
+                        readChar();
+                    } while (this.ch != '\n');
+
+                    return new Word(Character.toString(this.ch), Tag.NONE);
+                }
+
+                if (readAhead('*')) {
+                    do {
+                        sb.append(this.ch);
+                        readChar();
+                    } while (this.ch != '*');
+
+                    if (readAhead('/')) {
+                        sb.append(this.ch);
+                        readChar();
+                    }
+
+                    return new Word(Character.toString(this.ch), Tag.NONE);
+                }
+
+                return Word.DIVIDE;
+
             case '&':
-                if (readch('&')) {
-                    readch();
+                if (readAhead('&')) {
                     return Word.AND;
                 }
-                break;
 
-            case '=':
-                if (readch('=')) {
-                    readch();
-                    return Word.EQUALS;
-                }
-                readch();
-                return Word.ASSIGN;
+                throw new Error("Erro léxico na linha " + Lexer.line);
 
             case ',':
-                readch();
+                readChar();
                 return Word.COMMA;
 
             case ';':
-                readch();
+                readChar();
                 return Word.SEMICOLON;
 
             case '(':
-                readch();
+                readChar();
                 return Word.LEFT_PAREN;
 
             case ')':
-                readch();
+                readChar();
                 return Word.RIGHT_PAREN;
 
             case '{':
-                readch();
+                readChar();
                 return Word.BRACKET_LEFT;
 
             case '}':
-                readch();
+                readChar();
                 return Word.BRACKET_RIGHT;
 
             case '.':
-                readch();
+                readChar();
                 return Word.DOT;
 
-            // strings/literais
+            // literais
             case '"':
-                StringBuffer sb = new StringBuffer();
+                sb = new StringBuffer();
                 do {
-                    if (this.ch != '\n')
-                        sb.append(this.ch);
+                    if (this.ch == '\n')
+                        throw new Error("Erro léxico na linha " + Lexer.line);
 
-                    readch();
+                    sb.append(this.ch);
+                    readChar();
                 } while (this.ch != '"');
 
                 sb.append(this.ch);
-                readch();
+                readChar();
 
-                String lexema = sb.toString();
+                String literal = sb.toString();
 
-                Token t = words.get(lexema);
-
-                if (t != null)
-                    return t; // palavra já existe na HashTable
-
-                t = new Word(lexema, Tag.LITERAL);
-                words.put(lexema, t);
-
-                return t;
+                return new Word(literal, Tag.LITERAL);
         }
 
         // numeros
@@ -185,10 +209,10 @@ public class Lexer {
                         sb.append(this.ch);
 
                         // logica de verificacao do ponto cagada
-                        if (readch('.')) {
+                        if (readAhead('.')) {
                             System.out.println(this.ch);
                             sb.append(this.ch);
-                            readch();
+                            readChar();
 
                             if (!Character.isDigit(this.ch))
                                 throw new Error();
@@ -215,7 +239,7 @@ public class Lexer {
             StringBuffer sb = new StringBuffer();
             do {
                 sb.append(this.ch);
-                readch();
+                readChar();
             } while (Character.isLetterOrDigit(this.ch) || this.ch == '_');
 
             String s = sb.toString();
@@ -231,62 +255,27 @@ public class Lexer {
             return Word.DONE;
         }
 
-        readch();
+        readChar();
         return new Word(Character.toString(this.ch), Tag.NONE);
     }
 
-    private void reserve(Word word) {
-        words.put(word.getLexeme(), word);
+    private void reserve(Word t) {
+        words.put(t.lexeme, t);
     }
 
-    private void reserveAllDisneyReservedTokens() {
-        reserve(Word.CLASS);
-        reserve(Word.INT);
-        reserve(Word.STRING);
-        reserve(Word.FLOAT);
-        reserve(Word.INIT);
-        reserve(Word.STOP);
-        reserve(Word.IF);
-        reserve(Word.ELSE);
-        reserve(Word.DO);
-        reserve(Word.WHILE);
-        reserve(Word.READ);
-        reserve(Word.WRITE);
-        reserve(Word.NOT);
-        reserve(Word.GREATER_THAN);
-        reserve(Word.GREATER_EQUAL);
-        reserve(Word.LESS_THAN);
-        reserve(Word.LESS_EQUAL);
-        reserve(Word.DIF);
-        reserve(Word.EQUALS);
-        reserve(Word.PLUS);
-        reserve(Word.SUBTRACT);
-        reserve(Word.OR);
-        reserve(Word.MULT);
-        reserve(Word.DIVIDE);
-        reserve(Word.AND);
-        reserve(Word.ASSIGN);
-        reserve(Word.SEMICOLON);
-        reserve(Word.COMMA);
-        reserve(Word.LEFT_PAREN);
-        reserve(Word.RIGHT_PAREN);
-        reserve(Word.BRACKET_LEFT);
-        reserve(Word.BRACKET_RIGHT);
-        reserve(Word.DOT);
-        reserve(Word.DONE);
+    private void readChar() throws IOException {
+        int c = fileReader.read();
+
+        this.ch = (char) c;
     }
 
-    private void readch() throws IOException {
-        int f = file.read();
-        this.ch = (char) f;
-    }
+    private boolean readAhead(char c) throws IOException {
+        readChar();
 
-    private boolean readch(char c) throws IOException {
-        readch();
         if (this.ch != c)
             return false;
+
         this.ch = ' ';
         return true;
     }
-
 }
