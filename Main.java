@@ -31,9 +31,10 @@ public class Main {
             } else if (t instanceof FloatValue) {
                 FloatValue f = (FloatValue) t;
                 System.out.println("Token " + (i + 1) + ": " + f.value);
-            } else {
+            } else if (t != null) {
                 System.out.println("Token " + (i + 1) + ": " + t.tag);
-            }
+            } else
+                continue;
 
             i++;
         }

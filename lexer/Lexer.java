@@ -1,7 +1,5 @@
 package lexer;
 
-import java.io.File;
-import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.util.Hashtable;
@@ -86,13 +84,12 @@ public class Lexer {
                     return Word.OR;
                 }
 
-                throw new Error("Erro léxico na linha " + Lexer.line);
+                throw new Error("Apenas uma '|' nao e reconhecida, erro linha: " + Lexer.line);
 
             case '*':
                 readChar();
                 return Word.MULT;
 
-            // lembrar de considerar EOF
             case '/':
                 readChar();
                 if (this.ch == '/') {
@@ -104,15 +101,22 @@ public class Lexer {
                 }
 
                 if (this.ch == '*') {
-                    while (true) {
-                        readChar();
+                    readChar();
 
+                    while (true) {
                         if (this.ch == '*') {
-                            if (readAhead('/')) {
+                            readChar();
+                            if (this.ch == '/') {
+                                readChar();
                                 return null;
                             }
+                        } else {
+                            readChar();
                         }
 
+                        if (this.EOF) {
+                            throw new Error("Comentario nao foi fechado, erro linha: " + Lexer.line);
+                        }
                     }
                 }
 
@@ -123,7 +127,7 @@ public class Lexer {
                     return Word.AND;
                 }
 
-                throw new Error("Erro léxico na linha " + Lexer.line);
+                throw new Error("Apenas um '&' nao e reconhecido, erro linha: " + Lexer.line);
 
             case ',':
                 readChar();
@@ -158,7 +162,8 @@ public class Lexer {
                 sb = new StringBuffer();
                 do {
                     if (this.ch == '\n')
-                        throw new Error("Erro léxico na linha " + Lexer.line);
+                        throw new Error(
+                                "Literais nao podem possuir quebra de linha entre as aspas, erro linha: " + Lexer.line);
 
                     sb.append(this.ch);
                     readChar();
@@ -176,6 +181,7 @@ public class Lexer {
         if (Character.isDigit(this.ch)) {
             switch (this.ch) {
                 case '0':
+                    readChar();
                     return new Int(0);
 
                 default:
@@ -190,7 +196,9 @@ public class Lexer {
                         readChar();
 
                         if (!Character.isDigit(this.ch))
-                            throw new Error("Erro léxico na linha " + Lexer.line);
+                            throw new Error(
+                                    "Variavel float deve possuir pelo menos um digito depois do ponto, erro linha: "
+                                            + Lexer.line);
 
                         int iter = 1;
                         do {
@@ -226,9 +234,7 @@ public class Lexer {
             return w;
         }
 
-        Token t = new Token(this.ch);
-        this.ch = ' ';
-        return t;
+        throw new Error("Caracter nao reconhecido, erro linha: " + Lexer.line);
     }
 
     private void reserve(Word t) {

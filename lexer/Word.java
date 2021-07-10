@@ -24,7 +24,6 @@ public class Word extends Token {
     public static final Word BRACKET_LEFT = new Word("{", Tag.BRACKET_LEFT);
     public static final Word BRACKET_RIGHT = new Word("}", Tag.BRACKET_RIGHT);
     public static final Word DOT = new Word(".", Tag.DOT);
-    public static final Word DONE = new Word("-1", Tag.DONE);
 
     public Word(String lexeme, int tag) {
         super(tag);
